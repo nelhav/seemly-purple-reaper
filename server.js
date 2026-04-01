@@ -31,8 +31,16 @@ const client = new Client({
 });
 client.commands = new Collection();
 
+let startTime = null,
+  cLdTimeoutID = null;
+
 http
   .createServer(function (req, res) {
+    startTime = new Date().getTime();
+    if (cLdTimeoutID != null) {
+      clearTimeout(cLdTimeoutID);
+    }
+    cLdTimeoutID = setTimeout(cLdestroy, 15 * 60 * 1000);
     if (req.method == "POST") {
       var data = "";
       req.on("data", function (chunk) {
@@ -41,7 +49,7 @@ http
       req.on("end", function () {
         if (!data) {
           console.log("No post data");
-          res.end();
+          res.0end();
           return;
         }
         var dataObject = querystring.parse(data);
@@ -216,6 +224,26 @@ if (process.env.OPERAS == undefined) {
 }
 
 client.login(process.env.OPERAS);
+
+//15分でログアウト
+function cLdestroy() {
+  let nowTime = new Date().getTime();
+  if (nowTime >= startTime + 15 * 60 * 1000) {
+    console.log(
+      "▼▼cLdestroy▼▼\n最後のリクエストから" +
+        String((nowTime - startTime) / 60000) +
+        "分経過" +
+        "\nDiscord APIとの接続を終えます",
+    );
+    client.destroy();
+  } else {
+    console.log(
+      "▼▼cLdestroy▼▼\n最後のリクエストから" +
+        String((nowTime - startTime) / 60000) +
+        "分経過",
+    );
+  }
+}
 
 //投稿に基づく事務管理
 async function meiboAudit_master(dataObject) {
