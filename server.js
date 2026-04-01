@@ -49,7 +49,7 @@ http
       req.on("end", function () {
         if (!data) {
           console.log("No post data");
-          res.0end();
+          res.end();
           return;
         }
         var dataObject = querystring.parse(data);
