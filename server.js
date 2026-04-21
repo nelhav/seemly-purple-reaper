@@ -795,10 +795,12 @@ function peopleInTheGuild2(guildId, userName) {
 //メッセージ送信
 //メッセージ送信（webhook）
 async function webhook1(settings) {
-  console.log(settings.webhookId);
+  /*console.log(settings.webhookId);*/
+  console.log(settings.webhookURL);
   const webhookClient = new WebhookClient({
-    id: String(settings.webhookId),
-    token: String(settings.webhookToken),
+    /*id: String(settings.webhookId),
+    token: String(settings.webhookToken),*/
+    url: String(settings.webhookURL)
   });
 
   let embeds = null,
