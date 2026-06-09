@@ -500,31 +500,25 @@ async function chSetting(obj) {
   let guildID = String(obj.serverURL)
       .replace("https://discord.com/channels/", "")
       .replace("/", ""),
-    guild = await client.guilds.fetch(String(guildID)),
     channel = client.channels.cache.get(String(obj.channel1ID));
   obj.setting = JSON.parse(obj.setting);
-  if (obj.setting[0].deny != undefined && obj.setting[0].deny.length > 0) {
-    if (
-      String(obj.setting[0].deny[0]) == "PermissionsBitField.Flags.ViewChannel"
-    ) {
-      obj.setting[0].deny[0] = PermissionsBitField.Flags.ViewChannel;
-      console.log("$$$", obj.setting);
+  try {
+    if (obj.settingMode == "create") {
+      await channel.permissionOverwrites.create(String(obj.setting[0].id), {
+        ViewChannel: true,
+        ManageChannels: true,
+        MoveMembers: true,
+        MuteMembers: true,
+      });
+      console.log("chSeting CREATE for", String(obj.setting[0].id));
+    } else if (obj.settingMode == "delete") {
+      await channel.permissionOverwrites.delete(String(obj.setting[0].id));
+      console.log("chSeting DELETE for", String(obj.setting[0].id));
     }
-    channel.permissionOverwrites.edit(obj.setting[0].id, {
-      ViewChannel: false,
-    }); //.set(obj.setting)
-  } else if (
-    obj.setting[0].allow != undefined &&
-    obj.setting[0].allow.length > 0
-  ) {
-    if (
-      String(obj.setting[0].allow[0]) == "PermissionsBitField.Flags.ViewChannel"
-    ) {
-      obj.setting[0].allow[0] = PermissionsBitField.Flags.ViewChannel;
-      console.log("$$$", obj.setting);
-    }
-    channel.permissionOverwrites.edit(obj.setting[0].id, { ViewChannel: true });
+  } catch (e) {
+    console.error("chSeting", e);
   }
+  return;
 }
 
 //イベント作成
