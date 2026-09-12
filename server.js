@@ -40,7 +40,7 @@ http
     if (cLdTimeoutID != null) {
       clearTimeout(cLdTimeoutID);
     }
-    cLdTimeoutID = setTimeout(cLdestroy, 15 * 60 * 1000);
+    cLdTimeoutID = setTimeout(cLdestroy, 5 * 60 * 1000);
     if (req.method == "POST") {
       var data = "";
       req.on("data", function (chunk) {
@@ -132,16 +132,17 @@ http
           if (
             dataObject.stampArr == undefined ||
             dataObject.answerArr == undefined ||
-            dataObject.roleArr == undefined
+            dataObject.roleArr == undefined ||
+			String(dataObject.io) != String(process.env.io)
           ) {
             res.end();
             return;
           }
           meiboAudit_bulk(
             dataObject,
-            dataObject.stampArr,
-            dataObject.answerArr,
-            dataObject.roleArr,
+            JSON.parse(dataObject.stampArr),
+            JSON.parse(dataObject.answerArr),
+            JSON.parse(dataObject.roleArr),
           );
           res.end();
           return;
@@ -316,7 +317,7 @@ async function meiboAudit_master(dataObject) {
 
 //メンバーを取得
 async function memberListExtracter(guildID) {
-  let guild = await client.guilds.cache.get(String(guildID));
+  let guild = client.guilds.cache.get(String(guildID));
   let currentList = await guild.members.fetch();
   let currentList2 = Array.from(currentList);
   return currentList2;
@@ -324,7 +325,7 @@ async function memberListExtracter(guildID) {
 
 //ロールを取得
 async function roleListExtracter(guildID) {
-  let guild = await client.guilds.cache.get(String(guildID));
+  let guild = client.guilds.cache.get(String(guildID));
   let currentList = await guild.roles.fetch();
   let currentList2 = Array.from(currentList);
   console.log("currentList2", currentList2.length, currentList2[1][1].rawPosition);
