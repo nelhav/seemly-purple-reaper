@@ -16,6 +16,7 @@ const {
   PermissionsBitField,
   GuildScheduledEventEntityType,
   GuildScheduledEventPrivacyLevel,
+  AuditLogEvent,
 } = require("discord.js");
 const client = new Client({
   intents: [
@@ -25,7 +26,8 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildVoiceStates,
-	GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildMessagePolls,
   ],
   partials: [Partials.Channel, Partials.Reaction, Partials.Message],
 });
@@ -35,7 +37,7 @@ let startTime = null,
   cLdTimeoutID = null;
 
 http
-  .createServer(function (req, res) {
+  .createServer(async function (req, res) {
     startTime = new Date().getTime();
     if (cLdTimeoutID != null) {
       clearTimeout(cLdTimeoutID);
@@ -46,7 +48,7 @@ http
       req.on("data", function (chunk) {
         data += chunk;
       });
-      req.on("end", function () {
+      req.on("end", async function () {
         if (!data) {
           console.log("No post data");
           res.end();
@@ -121,13 +123,13 @@ http
           res.end();
           return;
         }
-		if (dataObject.type == "kotaeMng") {
+        if (dataObject.type == "kotaeMng") {
           console.log("kotaeMng");
           quizReq(dataObject);
           res.end();
           return;
         }
-		if (dataObject.type == "doAudit") {
+        if (dataObject.type == "doAudit") {
           console.log("doAudit");
           if (
             dataObject.stampArr == undefined ||
@@ -147,10 +149,25 @@ http
           res.end();
           return;
         }
+        if (dataObject.type == "kotaePoll") {
+          console.log("kotaePoll");
+          pollReq(dataObject);
+          res.end();
+          return;
+        }
         if (dataObject.type == "finish") {
-          console.log("ponnpoko:" + dataObject.type);
+          console.log("finish");
           let userId = String(dataObject.userID);
-          sendDm(userId, dataObject.comment);
+          if (dataObject.options != null) {
+            let options = JSON.parse(dataObject.options);
+            if (options.ext == "ext") {
+              sendMsgWithFrags("DM_" + userId, dataObject.comment, options);
+            } else {
+              sendMsgWithFrags("DM_" + userId, dataObject.comment, options);
+            }
+          } else {
+            sendDm(userId, dataObject.comment);
+          }
           res.end();
           return;
         }
@@ -669,6 +686,53 @@ function reactedEmojis(beforeMessage) {
   });
 }
 
+//公式の投票機能に対応する場合
+async function pollReq(obj) {
+  let channel, message, answers, okuruNaiyou, res;
+  try{
+    channel = client.channels.cache.get(String(obj.channelID));
+    message = await channel.messages.fetch(obj.messageID);
+    answers = await message.poll.answers;
+    okuruNaiyou = {
+      obj: obj,
+      answers: null,
+      message: {
+        authorID: message.author.id,
+        content: message.content,
+        createdTimestamp: message.createdTimestamp,
+        retrievedAt: new Date().getTime(),
+      },
+    };
+    res = reactedPolls(answers).then(async function (emojiIs2) {
+      okuruNaiyou.answers = emojiIs2;
+      if(obj.type == "kotaePoll2"){return okuruNaiyou;}
+      let okuruJson = JSON.stringify(okuruNaiyou);
+      await fetching1(String(obj.uri), okuruJson);
+      return "成功です";
+    });
+    if(obj.type == "kotaePoll2"){return res;}
+  }
+  catch(e){console.error("pollReq: ", e);}
+}
+
+function reactedPolls(answers) {
+  return new Promise(function (resolve, reject) {
+    var emojiCs = Promise.all(
+      answers.map(async (reaction) => {
+        let emojiName;
+        try{emojiName = reaction._emoji.name;}
+        catch(e){console.warn("reactedPolls...", e); emojiName = "";}
+        const emojiText = reaction.text;
+        const emojiCount = reaction.voteCount;
+        const reactionUsers = Array.from(await reaction.fetchVoters());
+        console.log(emojiName, emojiCount);
+        return [emojiName, emojiText, reactionUsers];
+      }),
+    );
+    resolve(emojiCs);
+  });
+}
+
 /*-----以下は汎用関数群-----*/
 
 //スリープ
@@ -787,7 +851,6 @@ function peopleInTheGuild2(guildId, userName) {
   }
 }
 
-//メッセージ送信
 //メッセージ送信（webhook）
 async function webhook1(settings) {
   /*console.log(settings.webhookId);*/
@@ -868,7 +931,9 @@ async function sendMsgWithFrags(channelId, text, options) {
     let option = { flags, files, reply, allowedMentions };
     let emojiStr;
     console.log("bbbbbbb", channelId, text, options);
-    let sentMes = await client.channels.cache
+    let sentMes;
+    if(String(channelId).search(/^DM_/)==-1){
+      sentMes = await client.channels.cache
       .get(channelId)
       .send({
         content: text,
@@ -879,6 +944,23 @@ async function sendMsgWithFrags(channelId, text, options) {
       })
       .then(console.log("メッセージ送信: " + text + JSON.stringify(option)))
       .catch(console.error);
+    }
+    else{
+      sentMes = client.users
+      .fetch(String(channelId).replace("DM_", ""))
+      .then((e) => {
+        e.send({
+          content: text,
+          flags: flags,
+          files: files,
+          reply: reply,
+          allowedMentions: allowedMentions,
+        })
+        .then(console.log("DM送信: " + text + JSON.stringify(option)))
+        .catch(console.error); // 1段階目のエラー出力
+      })
+      .catch(console.error); // 2段階目のエラー出力
+    }
     if (emojis != undefined && emojis != null && emojis.length > 0) {
       for (let i = 0; i < emojis.length; i++) {
         if (String(emojis[i]) != "") {
