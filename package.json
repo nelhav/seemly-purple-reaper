@@ -10,14 +10,14 @@
     "@fastify/formbody": "^7.4.0",
     "@fastify/static": "^6.10.2",
     "@fastify/view": "^8.0.0",
-    "discord.js": "^14.10.2",
+    "discord.js": "^14.28.0",
     "fastify": "^4.21.0",
     "handlebars": "^4.7.8",
     "node-fetch": "^2.7.0",
     "querystring": "^0.2.0"
   },
   "engines": {
-    "node": "^26.12.1"
+    "node": "^26.13.0"
   },
   "repository": {
     "url": "https://glitch.com/edit/#!/glitch-hello-node"
